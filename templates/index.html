@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Water Quality Analysis - Home{% endblock %}
+
+{% block content %}
+<div class="row align-items-center py-5">
+    <div class="col-lg-6">
+        <h1 class="display-4 fw-bold mb-4">Water Quality Analysis</h1>
+        <p class="lead mb-4">
+            Using machine learning to detect copper concentration in water samples through colorometry and florometry analysis.
+        </p>
+        <p class="mb-4">
+            Our advanced ML-based solution helps you quickly analyze water samples and determine if the copper levels are safe, elevated, or potentially hazardous.
+        </p>
+        <div class="d-flex gap-3">
+            {% if current_user.is_authenticated %}
+                <a href="{{ url_for('analyze') }}" class="btn btn-primary">
+                    <i class="fas fa-vial me-2"></i>Analyze a Sample
+                </a>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-tachometer-alt me-2"></i>View Dashboard
+                </a>
+            {% else %}
+                <a href="{{ url_for('login') }}" class="btn btn-primary">
+                    <i class="fas fa-sign-in-alt me-2"></i>Login
+                </a>
+                <a href="{{ url_for('register') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-user-plus me-2"></i>Register
+                </a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-lg-6 mt-5 mt-lg-0 text-center">
+        <svg width="100%" height="300" viewBox="0 0 600 400">
+            <!-- Water container -->
+            <rect x="150" y="100" width="300" height="200" rx="20" ry="20" fill="#1a3a5e" stroke="#ccc" stroke-width="5"/>
+            <!-- Water -->
+            <rect x="155" y="105" width="290" height="190" rx="18" ry="18" fill="#2c7da0"/>
+            <!-- Water waves -->
+            <path d="M155,140 C200,120 250,160 300,140 C350,120 400,160 445,140 L445,290 C400,290 350,290 300,290 C250,290 200,290 155,290 Z" fill="#468faf"/>
+            <!-- Bubbles -->
+            <circle cx="200" cy="180" r="10" fill="#61a5c2" opacity="0.7"/>
+            <circle cx="240" cy="220" r="8" fill="#61a5c2" opacity="0.7"/>
+            <circle cx="350" cy="190" r="12" fill="#61a5c2" opacity="0.7"/>
+            <circle cx="380" cy="150" r="7" fill="#61a5c2" opacity="0.7"/>
+            <!-- Test tube -->
+            <rect x="270" y="50" width="60" height="150" rx="10" ry="10" fill="#a5cff1" stroke="#ccc" stroke-width="3" opacity="0.7"/>
+            <!-- Analysis symbol -->
+            <circle cx="300" cy="120" r="30" fill="#28a745" opacity="0.8"/>
+            <text x="300" y="125" text-anchor="middle" fill="white" font-weight="bold" font-size="14">Cu²⁺</text>
+            <!-- Light beams analyzing water -->
+            <line x1="100" y1="200" x2="150" y2="200" stroke="#fdce85" stroke-width="3" stroke-dasharray="5,5"/>
+            <line x1="500" y1="200" x2="450" y2="200" stroke="#fdce85" stroke-width="3" stroke-dasharray="5,5"/>
+            <circle cx="100" cy="200" r="15" fill="#f6bd60"/>
+            <circle cx="500" cy="200" r="15" fill="#f6bd60"/>
+        </svg>
+    </div>
+</div>
+
+<div class="row mt-5 pt-3">
+    <div class="col-12 text-center">
+        <h2 class="mb-4">How It Works</h2>
+    </div>
+</div>
+
+<div class="row mb-5">
+    <div class="col-md-4 mb-4">
+        <div class="card h-100 border-0 bg-dark">
+            <div class="card-body text-center">
+                <div class="mb-3 text-primary">
+                    <i class="fas fa-camera fa-3x"></i>
+                </div>
+                <h5 class="card-title">Upload Sample Image</h5>
+                <p class="card-text text-muted">
+                    Take a photo of your water sample and upload it to our platform.
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card h-100 border-0 bg-dark">
+            <div class="card-body text-center">
+                <div class="mb-3 text-warning">
+                    <i class="fas fa-microchip fa-3x"></i>
+                </div>
+                <h5 class="card-title">ML Analysis</h5>
+                <p class="card-text text-muted">
+                    Our ML algorithm analyzes the image using colorometry and florometry techniques.
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card h-100 border-0 bg-dark">
+            <div class="card-body text-center">
+                <div class="mb-3 text-success">
+                    <i class="fas fa-chart-bar fa-3x"></i>
+                </div>
+                <h5 class="card-title">Get Results</h5>
+                <p class="card-text text-muted">
+                    Receive detailed analysis with copper concentration levels and safety classification.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
