@@ -1,136 +1,52 @@
-{% extends "base.html" %}
-
-{% block title %}Dashboard - Water Quality Analysis{% endblock %}
+{% extends 'base.html' %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Your Analysis Dashboard</h1>
-    <a href="{{ url_for('analyze') }}" class="btn btn-primary">
-        <i class="fas fa-plus-circle me-2"></i>New Analysis
-    </a>
-</div>
-
-{% if analyses %}
-    <!-- Chart for concentration history -->
-    <div class="card mb-4 border-0 shadow">
-        <div class="card-body">
-            <h5 class="card-title">Copper Concentration History</h5>
-            <div class="chart-container">
-                <!-- Fixed version without strftime filter -->
-                <canvas id="concentrationHistory" data-analyses="{{ analyses|map(attribute='copper_concentration')|list|tojson }},{{ analyses|map(attribute='get_risk_color')|list|tojson }}"></canvas>
-            </div>
-        </div>
-    </div>
-
-    <h3 class="mb-3">Recent Analyses</h3>
-    <div class="row">
-        {% for analysis in analyses %}
-            <div class="col-md-6 col-lg-4 mb-4">
-                <div class="card h-100 border-0 shadow analysis-card">
-                    <div class="card-header bg-{{ analysis.get_risk_color() }}">
-                        <h5 class="card-title mb-0 text-white">
-                            <i class="fas fa-flask me-2"></i>Analysis #{{ analysis.id }}
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <span class="badge bg-{{ analysis.get_risk_color() }} text-white">{{ analysis.risk_level }}</span>
-                            <small class="text-muted">{{ analysis.get_formatted_timestamp() }}</small>
-                        </div>
-                        <div class="d-flex align-items-center mb-3">
-                            <div class="me-3">
-                                <i class="fas fa-tint fa-2x text-{{ analysis.get_risk_color() }}"></i>
-                            </div>
-                            <div>
-                                <h6 class="mb-0">Copper Concentration</h6>
-                                <h4 class="mb-0">{{ analysis.copper_concentration }} mg/L</h4>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card-footer bg-dark d-grid">
-                        <a href="{{ url_for('result', analysis_id=analysis.id) }}" class="btn btn-outline-primary">
-                            <i class="fas fa-search me-2"></i>View Details
-                        </a>
-                    </div>
-                </div>
-            </div>
+<div class="container mt-5">
+  <h2 class="mb-4 text-center">Water Quality Analysis Dashboard</h2>
+  <div class="table-responsive">
+    <table class="table table-bordered table-hover text-center">
+      <thead class="thead-dark">
+        <tr>
+          <th>Date</th>
+          <th>Location</th>
+          <th>pH</th>
+          <th>Hardness</th>
+          <th>Solids</th>
+          <th>Chloramines</th>
+          <th>Sulfate</th>
+          <th>Conductivity</th>
+          <th>Organic Carbon</th>
+          <th>Trihalomethanes</th>
+          <th>Turbidity</th>
+          <th>Drinkable</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in analyses %}
+        <tr style="background-color: {{ color_list[loop.index0] }};">
+          <td>{{ item.date }}</td>
+          <td>{{ item.location }}</td>
+          <td>{{ item.ph }}</td>
+          <td>{{ item.hardness }}</td>
+          <td>{{ item.solids }}</td>
+          <td>{{ item.chloramines }}</td>
+          <td>{{ item.sulfate }}</td>
+          <td>{{ item.conductivity }}</td>
+          <td>{{ item.organic_carbon }}</td>
+          <td>{{ item.trihalomethanes }}</td>
+          <td>{{ item.turbidity }}</td>
+          <td>{{ 'Yes' if item.drinkable else 'No' }}</td>
+        </tr>
         {% endfor %}
-    </div>
-{% else %}
-    <div class="empty-state">
-        <div class="mb-4">
-            <i class="fas fa-vial fa-4x text-muted"></i>
-        </div>
-        <h3>No Analyses Yet</h3>
-        <p class="text-muted">Upload your first water sample to begin analysis.</p>
-        <a href="{{ url_for('analyze') }}" class="btn btn-primary mt-3">
-            <i class="fas fa-plus-circle me-2"></i>New Analysis
-        </a>
-    </div>
-{% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const concentrationHistory = document.getElementById('concentrationHistory');
-    if (concentrationHistory && typeof Chart !== 'undefined') {
-        const chartDataStr = concentrationHistory.dataset.analyses;
-        if (chartDataStr) {
-            const parts = chartDataStr.split(',');
-            if (parts.length >= 2) {
-                try {
-                    const data = JSON.parse(parts[0]);
-                    const colors = JSON.parse(parts[1]);
-                    
-                    // Create labels from indices for the chart
-                    const labels = data.map((_, index) => `Sample ${index + 1}`);
-                    
-                    new Chart(concentrationHistory, {
-                        type: 'line',
-                        data: {
-                            labels: labels,
-                            datasets: [{
-                                label: 'Copper Concentration (mg/L)',
-                                data: data,
-                                fill: false,
-                                borderColor: 'rgb(75, 192, 192)',
-                                tension: 0.1,
-                                pointBackgroundColor: colors.map(color => {
-                                    if (color === 'success') return 'rgba(40, 167, 69, 0.8)';
-                                    if (color === 'info') return 'rgba(23, 162, 184, 0.8)';
-                                    if (color === 'warning') return 'rgba(255, 193, 7, 0.8)';
-                                    if (color === 'danger') return 'rgba(220, 53, 69, 0.8)';
-                                    return 'rgba(108, 117, 125, 0.8)';
-                                })
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    title: {
-                                        display: true,
-                                        text: 'Concentration (mg/L)'
-                                    }
-                                },
-                                x: {
-                                    title: {
-                                        display: true,
-                                        text: 'Sample'
-                                    }
-                                }
-                            }
-                        }
-                    });
-                } catch (e) {
-                    console.error('Error parsing chart data:', e);
-                }
-            }
-        }
-    }
-});
+  // You can add extra JS here if needed
+  console.log("Dashboard loaded successfully.");
 </script>
 {% endblock %}

@@ -10,45 +10,35 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, login_
 from werkzeug.utils import secure_filename
 import numpy as np
 
-# Setup logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# Base class for SQLAlchemy models
 class Base(DeclarativeBase):
     pass
 
-# Initialize SQLAlchemy
-# db = SQLAlchemy(model_class=Base)
 db = SQLAlchemy()
 
-# Create Flask app
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "developmentkey")
-app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)  # Needed for url_for to generate with https
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
-# Configure database
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///water_analysis.db")
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_recycle": 300,
     "pool_pre_ping": True,
 }
 app.config["UPLOAD_FOLDER"] = "static/uploads"
-app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16MB max upload
+app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
 app.config["ALLOWED_EXTENSIONS"] = {"png", "jpg", "jpeg"}
 
-# Make sure upload directory exists
 os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
-# Initialize SQLAlchemy with app
 db.init_app(app)
 
-# Set up login manager
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-# Import models and forms
 from models import User, Analysis
 from forms import LoginForm, RegistrationForm, AnalysisForm
 from ml_model import analyze_water_sample
@@ -58,10 +48,8 @@ def load_user(user_id):
     return db.session.get(User, int(user_id))
 
 def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in app.config["ALLOWED_EXTENSIONS"]
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config["ALLOWED_EXTENSIONS"]
 
-# Routes
 @app.route('/')
 def index():
     if current_user.is_authenticated:
@@ -72,7 +60,7 @@ def index():
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
-    
+
     form = LoginForm()
     if form.validate_on_submit():
         user = User.query.filter_by(email=form.email.data).first()
@@ -87,28 +75,22 @@ def login():
 def register():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
-    
+
     form = RegistrationForm()
     if form.validate_on_submit():
-        # Check if user already exists
         existing_user = User.query.filter_by(email=form.email.data).first()
         if existing_user:
             flash('Email already registered', 'danger')
             return render_template('register.html', form=form)
-        
-        # Create new user
+
         hashed_password = generate_password_hash(form.password.data)
-        user = User(
-            username=form.username.data, 
-            email=form.email.data, 
-            password_hash=hashed_password
-        )
+        user = User(username=form.username.data, email=form.email.data, password_hash=hashed_password)
         db.session.add(user)
         db.session.commit()
-        
+
         flash('Registration successful! Please log in.', 'success')
         return redirect(url_for('login'))
-    
+
     return render_template('register.html', form=form)
 
 @app.route('/logout')
@@ -121,9 +103,9 @@ def logout():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    # Get user's previous analyses
     analyses = Analysis.query.filter_by(user_id=current_user.id).order_by(Analysis.timestamp.desc()).all()
-    return render_template('dashboard.html', analyses=analyses)
+    color_list = [a.get_risk_color() for a in analyses]
+    return render_template('dashboard.html', analyses=analyses, color_list=color_list)
 
 @app.route('/analyze', methods=['GET', 'POST'])
 @login_required
@@ -137,12 +119,9 @@ def analyze():
             new_filename = f"{timestamp}-{filename}"
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], new_filename)
             file.save(filepath)
-            
-            # Process the image using the ML model
+
             try:
                 result = analyze_water_sample(filepath)
-                
-                # Create an Analysis record
                 analysis = Analysis(
                     user_id=current_user.id,
                     image_path=filepath,
@@ -152,29 +131,24 @@ def analyze():
                 )
                 db.session.add(analysis)
                 db.session.commit()
-                
                 return redirect(url_for('result', analysis_id=analysis.id))
             except Exception as e:
                 logger.error(f"Error during analysis: {str(e)}")
                 flash(f"Error during analysis: {str(e)}", 'danger')
         else:
             flash('Invalid file. Please upload a JPG, JPEG or PNG image.', 'danger')
-    
+
     return render_template('analyze.html', form=form)
 
 @app.route('/result/<int:analysis_id>')
 @login_required
 def result(analysis_id):
     analysis = Analysis.query.get_or_404(analysis_id)
-    
-    # Ensure user can only view their own analyses
     if analysis.user_id != current_user.id:
         flash('Unauthorized access', 'danger')
         return redirect(url_for('dashboard'))
-    
     return render_template('result.html', analysis=analysis)
 
-# Initialize database tables
 with app.app_context():
     db.create_all()
 

@@ -87,4 +87,12 @@
                 {% elif analysis.risk_level|lower == 'risky' %}
                     <div class="alert alert-danger">
                         <i class="fas fa-radiation-alt me-2"></i>
-                        <strong>Ri
+                        <strong>Risky levels detected</strong>
+                        <p class="small mb-0 mt-1">The copper concentration is at a risky level and may pose health concerns.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
