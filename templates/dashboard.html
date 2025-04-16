@@ -1,52 +1,346 @@
 {% extends 'base.html' %}
 
+{% block title %}Dashboard - {{ super() }}{% endblock %}
+
 {% block content %}
-<div class="container mt-5">
+<div class="container mt-4 mb-5"> {# Adjusted margins #}
   <h2 class="mb-4 text-center">Water Quality Analysis Dashboard</h2>
-  <div class="table-responsive">
-    <table class="table table-bordered table-hover text-center">
-      <thead class="thead-dark">
-        <tr>
-          <th>Date</th>
-          <th>Location</th>
-          <th>pH</th>
-          <th>Hardness</th>
-          <th>Solids</th>
-          <th>Chloramines</th>
-          <th>Sulfate</th>
-          <th>Conductivity</th>
-          <th>Organic Carbon</th>
-          <th>Trihalomethanes</th>
-          <th>Turbidity</th>
-          <th>Drinkable</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for item in analyses %}
-        <tr style="background-color: {{ color_list[loop.index0] }};">
-          <td>{{ item.date }}</td>
-          <td>{{ item.location }}</td>
-          <td>{{ item.ph }}</td>
-          <td>{{ item.hardness }}</td>
-          <td>{{ item.solids }}</td>
-          <td>{{ item.chloramines }}</td>
-          <td>{{ item.sulfate }}</td>
-          <td>{{ item.conductivity }}</td>
-          <td>{{ item.organic_carbon }}</td>
-          <td>{{ item.trihalomethanes }}</td>
-          <td>{{ item.turbidity }}</td>
-          <td>{{ 'Yes' if item.drinkable else 'No' }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+
+  {% if analyses and analyses|length > 0 %} {# Check if analyses is not None and not empty #}
+  {# Use Bootstrap grid for layout #}
+  <div class="row mb-4 g-4"> {# Added gutter spacing g-4 #}
+    {# Chart 1: Drinkability Distribution (Pie Chart) #}
+    <div class="col-lg-4 col-md-6">
+      <div class="card h-100"> {# Use h-100 for equal height cards in a row #}
+        <div class="card-header">Sample Drinkability</div>
+        <div class="card-body d-flex justify-content-center align-items-center" style="min-height: 300px;"> {# Use flexbox for centering, set min-height #}
+          <canvas id="drinkabilityChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    {# Chart 2: pH Trend Over Time (Line Chart) #}
+    <div class="col-lg-8 col-md-6">
+      <div class="card h-100">
+        <div class="card-header">pH Level Trend</div>
+        <div class="card-body" style="min-height: 300px;">
+          <canvas id="phTrendChart"></canvas>
+        </div>
+      </div>
+    </div>
   </div>
+
+  <div class="row mb-4 g-4"> {# Added gutter spacing g-4 #}
+    {# Chart 3: Turbidity Trend Over Time (Line Chart) #}
+    <div class="col-lg-6">
+      <div class="card h-100">
+        <div class="card-header">Turbidity Trend</div>
+        <div class="card-body" style="min-height: 300px;">
+          <canvas id="turbidityTrendChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    {# Chart 4: Key Parameters Comparison (Latest Sample - Bar Chart) #}
+    <div class="col-lg-6">
+      <div class="card h-100">
+        <div class="card-header">Latest Sample Parameters</div>
+        <div class="card-body" style="min-height: 300px;">
+          <canvas id="latestParametersChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Add more rows/columns for other charts (e.g., Hardness, Solids, Conductivity) as needed #}
+  {# Example:
+  <div class="row mb-4 g-4">
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header">Hardness Trend</div>
+        <div class="card-body" style="min-height: 300px;">
+          <canvas id="hardnessTrendChart"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+       <div class="card h-100">
+        <div class="card-header">Conductivity Trend</div>
+        <div class="card-body" style="min-height: 300px;">
+          <canvas id="conductivityTrendChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+  #}
+
+
+  {% else %} {# This is the HTML else block being referred to in the JS comment #}
+  <div class="alert alert-info text-center" role="alert">
+    <i class="fas fa-info-circle me-2"></i>No analysis data is available to display charts. Please perform a <a href="{{ url_for('analyze') }}" class="alert-link">New Analysis</a>.
+  </div>
+  {% endif %}
+
 </div>
 {% endblock %}
 
+
 {% block extra_js %}
+{# Chart.js is already loaded in base.html #}
 <script>
-  // You can add extra JS here if needed
-  console.log("Dashboard loaded successfully.");
+  // Wait for the DOM to be fully loaded
+  document.addEventListener('DOMContentLoaded', function() {
+    // Safely get data from Jinja template
+    let analysesData = [];
+    try {
+        // Use |safe filter to prevent auto-escaping of JSON string by Jinja
+        // Use |tojson filter to correctly encode Python data structures to JSON
+        const rawData = {{ analyses | tojson | safe }};
+        // Ensure rawData is an array before assigning
+        if (Array.isArray(rawData)) {
+            analysesData = rawData;
+        } else {
+            console.warn("Passed 'analyses' data is not an array:", rawData);
+        }
+    } catch (e) {
+        console.error("Error parsing analyses data from template:", e);
+        // Display error message to user?
+        const contentArea = document.querySelector('.container'); // Simplified selector, might need adjustment
+        if (contentArea) {
+             const errorDiv = document.createElement('div');
+             errorDiv.className = 'alert alert-danger';
+             errorDiv.textContent = 'Error loading chart data.';
+             // Prepend error message within the content block
+             if (contentArea.firstChild) {
+               contentArea.insertBefore(errorDiv, contentArea.firstChild);
+             } else {
+               contentArea.appendChild(errorDiv);
+             }
+        }
+        return; // Stop execution if data is invalid
+    }
+
+
+    console.log("Analysis Data for Charts:", analysesData);
+
+    // --- Chart Initialization ---
+    if (analysesData && analysesData.length > 0) {
+
+      // --- 1. Drinkability Distribution (Pie Chart) ---
+      const drinkableCtx = document.getElementById('drinkabilityChart')?.getContext('2d');
+      if (drinkableCtx) {
+        const drinkableCount = analysesData.filter(item => item.drinkable === 1 || item.drinkable === true).length; // Handle bool or int
+        const notDrinkableCount = analysesData.length - drinkableCount;
+
+        new Chart(drinkableCtx, {
+          type: 'doughnut', // or 'pie'
+          data: {
+            labels: ['Drinkable', 'Not Drinkable'],
+            datasets: [{
+              label: 'Sample Drinkability',
+              data: [drinkableCount, notDrinkableCount],
+              backgroundColor: [
+                'rgba(75, 192, 192, 0.7)', // Teal/Greenish
+                'rgba(255, 99, 132, 0.7)'  // Reddish
+              ],
+              borderColor: [
+                'rgba(75, 192, 192, 1)',
+                'rgba(255, 99, 132, 1)'
+              ],
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false, // Allows chart to fill container height
+            plugins: {
+              legend: {
+                position: 'bottom', // Position legend below chart
+              },
+              title: {
+                display: false, // Already have card header
+              }
+            }
+          }
+        });
+      } else {
+        console.error("Canvas element with ID 'drinkabilityChart' not found.");
+      }
+
+
+      // --- Prepare data for Trend Charts ---
+      // Sort data by date ascending for meaningful trend lines
+      analysesData.sort((a, b) => {
+          // Robust date comparison
+          const dateA = a.date ? new Date(a.date) : null;
+          const dateB = b.date ? new Date(b.date) : null;
+          if (dateA && dateB) return dateA - dateB;
+          if (dateA) return -1; // Place items with dates first
+          if (dateB) return 1;
+          return 0; // Keep original order if both dates invalid/missing
+      });
+
+      // Create labels (dates) and datasets ONLY from items with valid dates for trends
+      const validTrendData = analysesData.filter(item => item.date && !isNaN(new Date(item.date)));
+      const labels = validTrendData.map(item => new Date(item.date).toLocaleDateString()); // Format date nicely
+      const phValues = validTrendData.map(item => item.ph);
+      const turbidityValues = validTrendData.map(item => item.turbidity);
+      // const hardnessValues = validTrendData.map(item => item.hardness); // Prepare for other charts
+      // const conductivityValues = validTrendData.map(item => item.conductivity); // Prepare for other charts
+
+
+      // --- 2. pH Trend Chart (Line Chart) ---
+      const phTrendCtx = document.getElementById('phTrendChart')?.getContext('2d');
+      if (phTrendCtx) {
+        new Chart(phTrendCtx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'pH Level',
+              data: phValues,
+              borderColor: 'rgb(54, 162, 235)', // Blue
+              backgroundColor: 'rgba(54, 162, 235, 0.1)',
+              tension: 0.1, // Makes the line slightly curved
+              fill: true,
+              pointRadius: 3, // Add points
+              pointHoverRadius: 5
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: {
+                beginAtZero: false, // pH scale doesn't typically start at 0
+                title: { display: true, text: 'pH Value' }
+              },
+              x: {
+                 title: { display: true, text: 'Date of Analysis' }
+              }
+            },
+            plugins: {
+              legend: { display: true, position: 'top' },
+              title: { display: false }
+            }
+          }
+        });
+      } else {
+          console.error("Canvas element with ID 'phTrendChart' not found.");
+      }
+
+
+      // --- 3. Turbidity Trend Chart (Line Chart) ---
+      const turbidityTrendCtx = document.getElementById('turbidityTrendChart')?.getContext('2d');
+      if (turbidityTrendCtx) {
+        new Chart(turbidityTrendCtx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'Turbidity (NTU)', // Add units if known
+              data: turbidityValues,
+              borderColor: 'rgb(153, 102, 255)', // Purple
+              backgroundColor: 'rgba(153, 102, 255, 0.1)',
+              tension: 0.1,
+              fill: true,
+              pointRadius: 3,
+              pointHoverRadius: 5
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: {
+                beginAtZero: true, // Turbidity often starts at 0
+                title: { display: true, text: 'Turbidity (NTU)' }
+              },
+              x: {
+                 title: { display: true, text: 'Date of Analysis' }
+              }
+            },
+            plugins: {
+              legend: { display: true, position: 'top' },
+              title: { display: false }
+            }
+          }
+        });
+       } else {
+           console.error("Canvas element with ID 'turbidityTrendChart' not found.");
+       }
+
+
+      // --- 4. Latest Sample Parameters (Bar Chart) ---
+      const latestParametersCtx = document.getElementById('latestParametersChart')?.getContext('2d');
+      if (latestParametersCtx && analysesData.length > 0) {
+        // Find the latest sample (last one after sorting by date)
+        const latestSample = analysesData[analysesData.length - 1];
+        const parameterLabels = ['pH', 'Hardness', 'Solids', 'Chloramines', 'Sulfate', 'Conductivity', 'Organic Carbon', 'Trihalomethanes', 'Turbidity'];
+        const parameterValues = [
+          latestSample.ph,
+          latestSample.hardness,
+          latestSample.solids,
+          latestSample.chloramines,
+          latestSample.sulfate,
+          latestSample.conductivity,
+          latestSample.organic_carbon, // Ensure snake_case matches Python object keys
+          latestSample.trihalomethanes,
+          latestSample.turbidity
+        ];
+        // Define a color palette
+        const colorPalette = [
+            'rgba(255, 99, 132, 0.6)', 'rgba(54, 162, 235, 0.6)', 'rgba(255, 206, 86, 0.6)',
+            'rgba(75, 192, 192, 0.6)', 'rgba(153, 102, 255, 0.6)', 'rgba(255, 159, 64, 0.6)',
+            'rgba(201, 203, 207, 0.6)', 'rgba(231, 76, 60, 0.6)', 'rgba(46, 204, 113, 0.6)'
+        ];
+        const borderPalette = colorPalette.map(color => color.replace('0.6', '1')); // Make border opaque
+
+        new Chart(latestParametersCtx, {
+          type: 'bar',
+          data: {
+            labels: parameterLabels,
+            datasets: [{
+              label: `Parameters for ${latestSample.location || 'N/A'} on ${latestSample.date ? new Date(latestSample.date).toLocaleDateString() : 'N/A'}`,
+              data: parameterValues,
+              backgroundColor: colorPalette.slice(0, parameterLabels.length), // Use palette
+              borderColor: borderPalette.slice(0, parameterLabels.length),
+              borderWidth: 1
+            }]
+          },
+          options: {
+            indexAxis: 'y', // Display bars horizontally for better label readability
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: { // Note: x-axis for values when indexAxis is 'y'
+                beginAtZero: true,
+                title: { display: true, text: 'Value' }
+              },
+              y: {
+                 ticks: { autoSkip: false } // Prevent labels from being skipped
+              }
+            },
+            plugins: {
+              legend: { display: false }, // Label explains it well enough
+              title: { display: false } // Card header provides title
+            }
+          }
+        });
+       } else {
+            if (!latestParametersCtx) console.error("Canvas element with ID 'latestParametersChart' not found.");
+            // No need to log if analysesData is empty, handled by outer if
+       }
+
+      // --- Add more chart initializations here ---
+      // E.g., Hardness Trend
+      // const hardnessTrendCtx = document.getElementById('hardnessTrendChart')?.getContext('2d');
+      // if (hardnessTrendCtx) { /* ... new Chart(...) using hardnessValues ... */ }
+
+    } else {
+      console.log("No valid analysis data received or data array is empty.");
+      // The 'else' block in the HTML (outside this script) handles showing a user message.  <- MODIFIED COMMENT
+    }
+  });
 </script>
 {% endblock %}
