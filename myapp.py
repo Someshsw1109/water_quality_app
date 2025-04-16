@@ -19,7 +19,8 @@ class Base(DeclarativeBase):
     pass
 
 # Initialize SQLAlchemy
-db = SQLAlchemy(model_class=Base)
+# db = SQLAlchemy(model_class=Base)
+db = SQLAlchemy()
 
 # Create Flask app
 app = Flask(__name__)
